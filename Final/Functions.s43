@@ -1,0 +1,106 @@
+#include  <msp430g2553.h>
+;*******************************************************************************
+delaymac        MACRO   time
+                LOCAL   L1
+                LOCAL   L3
+L1              mov.w   #10,R13
+                mov.w   time, R15
+L3              dec.w   R15
+                jnz     L3
+                dec.w   R13
+                jnz     L3
+                ENDM
+;*******************************************************************************
+                ORG     0x0200           
+Id12            DB      0,5,9,3,6,1,9,8,0,7,0,7,0,1,5,2   ;define id's of id1 and id2 chained.
+SIZE            DW      16
+;*******************************************************************************
+                MODULE Functions
+                PUBLIC SetupP21,SetupP22,SetupP24,SetupP23,SetupP25 
+                EXTERN Delay1sec
+                RSEG   CODE
+                
+;===============SWstate=0x01===================================   
+SetupP21        mov.b   #0x00,&P2OUT            ;for P2.6,P2.7 to be GPIO
+Mainloop1       CMP.B   #1, &P1IN  ; Check if Switches state has changed
+                JNZ     Finish    ; If Switches state changed, exit
+                delaymac #52429
+                inc.b   P2OUT
+                cmp.b   #0xFF, P2OUT
+                jeq     Finish
+                jmp     Mainloop1  
+;===============SWstate=0x02===================================      
+SetupP22        mov.b   #0xFF,&P2OUT            ;for P2.6,P2.7 to be GPIO
+Mainloop2       CMP.B   #2, &P1IN  ; Check if Switches state has changed
+                JNZ     Finish    ; If Switches state changed, exit
+                delaymac #52429                
+                dec.b   P2OUT
+                cmp.b    #0x00, P2OUT
+                jeq     Finish
+                jmp     Mainloop2  
+;===============SWstate=0x04===================================
+SetupP24        mov     #Id12,R4
+                dec     R4
+                mov     #Id12,R5
+                add     SIZE, R5
+Mainloop4       CMP.B   #4, &P1IN ; Check if Switches state has changed
+                JNZ     Finish    ; if Switches state changed, exit
+                inc     R4
+                cmp     R4, R5
+                jeq     Finish
+                mov.b   @R4,P2OUT
+                delaymac #52429
+                jmp     Mainloop4
+;===============SWstate=0x05===================================
+SetupP25        mov.b    #0x00, P2OUT
+                mov.w   #8000,R8
+Mainloop5       CMP.B   #5, &P1IN ; Check if Switches state has changed
+                JNZ     Finish    ; if Switches state changed, exit  
+                xor.b   #0x80,&P1OUT
+                mov.w   #164,R6            
+down            dec.w   R6                     
+                jnz     down
+                xor.b   #0x80,&P1OUT
+                mov.w   #55,R6
+up              dec.w   R6                     
+                jnz     up
+                dec     R8
+                jnz     Mainloop5
+                mov.w   #8000,R8
+Mainloop52      CMP.B   #5, &P1IN ; Check if Switches state has changed
+                JNZ     Finish    ; if Switches state changed, exit
+                xor.b   #0x80,&P1OUT
+                mov.w   #55,R6            
+down2           dec.w   R6                     
+                jnz     down2
+                xor.b   #0x80,&P1OUT
+                mov.w   #164,R6
+up2             dec.w   R6                     
+                jnz     up2
+                dec     R8
+                jnz     Mainloop52
+                jmp     Finish
+                
+;===============SWstate!=0x01,2,4==============================
+
+SetupP23        mov.b   #0x00, &P2OUT  ;Turn off PB leds
+
+Finish          RET  ; Exit Routine to Main
+                        
+                ENDMOD 
+;===============Delay_Module===================================
+                MODULE  Delay
+                PUBLIC  Delay1sec
+                RSEG    CODE
+            
+Delay1sec       mov.w   #1,R13              
+L1              mov.w   #524,R15            
+L2              dec.w   R15                     
+                jnz     L2
+                dec     R13
+                jnz     L1
+                ret
+                ENDMOD
+
+;=============================================================================              
+                END 

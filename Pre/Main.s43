@@ -1,0 +1,46 @@
+#include <msp430g2553.h> ;define controlled include file
+
+             NAME      Main
+             PUBLIC    Main
+             EXTERN    SetupP21, SetupP22, SetupP24,SetupP23
+;*******************************************************************************
+
+;*******************************************************************************                                       
+             ORG      0xC000
+Main         MOV      0xC000, SP           ;set up stack, Synonym Command - mov #3100h,SP 
+StopWTD      MOV      #WDTPW+WDTHOLD,&WDTCTL     ;Stop watchdog timer
+;-------------------------------------------------------------------------------
+; SetUp SWs and LEDs
+; SWs
+            bis.b      #0xf0,&P1DIR ; set P1 to input. f for off(4 msb), 0 for on in switches(4 Lsb)                       
+            bis.b      #0xff,&P2DIR ; set PB to output.(P9,P10) 
+            bic.b      #0xC0,&P2SEL
+;-------------------------------------------------------------------------------              
+
+Mainloop    CMP.B #1, &P1IN   ; Compare if switch state is 1
+            jeq Swtich1
+            CMP.B #2, &P1IN  ; Compare if switch state is 2
+            jeq Switch2
+            CMP.B #4, &P1IN  ; Compare if switch state is 4
+            jeq Switch4
+            JMP ElseDO  ; Compare if switch state is neither 
+Swtich1 
+            call #SetupP21
+            jmp Mainloop
+           
+Switch2
+            call #SetupP22
+            jmp Mainloop
+Switch4
+            call #SetupP24
+            jmp Mainloop
+ElseDO
+            call #SetupP23 
+            jmp Mainloop
+            nop
+;-------------------------------------------------------------------------------
+            COMMON  INTVEC                  ; Interrupt Vectors
+;-------------------------------------------------------------------------------
+            ORG     RESET_VECTOR                  ; POR, ext. Reset
+            DW      Main
+            END
